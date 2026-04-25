@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Virtual Memory Simulator</h1>
+    <p>Paging · Demand Paging · Segmentation · Algorithm Comparison</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('paging',this)">Paging</button>
+    <button class="tab" onclick="showTab('compare',this)">Comparison</button>
+    <button class="tab" onclick="showTab('demand',this)">Demand Paging</button>
+    <button class="tab" onclick="showTab('segment',this)">Segmentation</button>
+  </div>
+
+  <!-- ===== PAGING TAB ===== -->
+  <div class="section active" id="tab-paging">
+    <div class="card">
+      <div class="card-title">Configuration</div>
+      <div class="row">
+        <div class="col">
+          <label>Reference String</label>
+          <input id="pg-ref" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1">
+        </div>
+        <div class="col" style="flex:0;min-width:110px">
+          <label>Frames</label>
+          <input id="pg-frames" type="number" value="3" min="1" max="8">
+        </div>
+        <div class="col" style="flex:0;min-width:140px">
+          <label>Algorithm</label>
+          <select id="pg-algo">
+            <option value="fifo">FIFO</option>
+            <option value="lru">LRU</option>
+            <option value="optimal">Optimal</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px" class="controls">
+        <button class="btn btn-green" onclick="initPaging()">▶ Simulate</button>
+        <button class="btn btn-ghost" onclick="prevStep()" id="btn-prev" disabled>← Prev</button>
+        <button class="btn btn-ghost" onclick="nextStep()" id="btn-next" disabled>Next →</button>
+        <button class="btn btn-blue" onclick="togglePlay()" id="btn-play" disabled>⏵ Play</button>
+        <button class="btn btn-red" onclick="resetPaging()" id="btn-reset" disabled>↺ Reset</button>
+        <div class="speed-ctrl">
+          Speed: <input type="range" id="speed-ctrl" min="200" max="1800" value="900" step="100" style="width:70px">
+          <span id="speed-val">0.9s</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="pg-sim" style="display:none">
+      <div class="card">
+        <div class="card-title">Reference Sequence</div>
+        <div class="seq-display" id="seq-display"></div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <div class="card">
+            <div class="card-title">RAM Frames (Current State)</div>
+            <div class="frames-grid" id="frames-display"></div>
+            <div class="explanation-box" id="step-explain">Press Simulate to begin.</div>
+          </div>
+        </div>
+        <div class="col" style="flex:0;min-width:180px">
+          <div class="card">
+            <div class="card-title">Statistics</div>
+            <div class="stats-row">
+              <div class="stat-box"><div class="stat-num stat-green" id="s-hits">0</div><div class="stat-lbl">Hits</div></div>
+              <div class="stat-box"><div class="stat-num stat-amber" id="s-faults">0</div><div class="stat-lbl">Faults</div></div>
+            </div>
+            <div style="margin-top:10px">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px">HIT RATE</div>
+              <div class="progress-bar"><div class="progress-fill fill-green" id="hit-bar" style="width:0%"></div></div>
+              <div style="font-size:11px;color:var(--green);margin-top:3px" id="hit-pct">0%</div>
+              <div style="font-size:10px;color:var(--text3);margin:8px 0 3px">FAULT RATE</div>
+              <div class="progress-bar"><div class="progress-fill fill-amber" id="fault-bar" style="width:0%"></div></div>
+              <div style="font-size:11px;color:var(--amber);margin-top:3px" id="fault-pct">0%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRAME MATRIX -->
+      <div class="card">
+        <div class="card-title">Frame State Matrix (Textbook View)</div>
+        <div class="matrix-wrap"><table class="matrix" id="pg-matrix"></table></div>
+        <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;flex-wrap:wrap">
+          <span style="color:var(--green)">■ Hit</span>
+          <span style="color:var(--amber)">■ Fault / Load</span>
+          <span style="color:var(--red)">■ Replaced</span>
+          <span style="color:var(--blue)">■ In memory</span>
+          <span style="color:var(--text3)">— Empty</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Step-by-Step Log</div>
+        <div class="step-log" id="step-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COMPARISON TAB ===== -->
+  <div class="section" id="tab-compare">
+    <div class="card">
+      <div class="card-title">Compare All Algorithms</div>
+      <div class="row">
+        <div class="col">
+          <label>Reference String</label>
+          <input id="cmp-ref" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1">
+        </div>
+        <div class="col" style="flex:0;min-width:110px">
+          <label>Frames</label>
+          <input id="cmp-frames" type="number" value="3" min="1" max="8">
+        </div>
+        <div class="col" style="flex:0;min-width:180px;display:flex;align-items:flex-end;gap:8px">
+          <button class="btn btn-green" style="flex:1" onclick="runComparison()">▶ Compare</button>
+          <button class="btn btn-ghost" onclick="runBeladys()">Belady's?</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="cmp-results" style="display:none">
+      <div class="row" id="cmp-cards" style="margin-bottom:14px"></div>
+
+      <!-- Belady's anomaly check -->
+      <div class="anomaly-banner" id="anomaly-banner"></div>
+
+      <!-- Visual bar chart -->
+      <div class="card">
+        <div class="card-title">Fault Rate Comparison</div>
+        <div id="cmp-chart"></div>
+      </div>
+
+      <!-- All three matrices -->
+      <div class="card" id="cmp-matrices">
+        <div class="card-title">Frame Matrices — Side by Side</div>
+        <div id="cmp-matrix-inner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DEMAND PAGING TAB ===== -->
+  <div class="section" id="tab-demand">
+    <div class="card">
+      <div class="card-title">Configuration</div>
+      <div class="row">
+        <div class="col">
+          <label>Access Sequence</label>
+          <input id="dp-seq" value="1 2 3 4 1 2 5 1 2 3 4 5">
+        </div>
+        <div class="col" style="flex:0;min-width:110px">
+          <label>RAM Frames</label>
+          <input id="dp-frames" type="number" value="3" min="1" max="6">
+        </div>
+        <div class="col" style="flex:0;min-width:120px">
+          <label>Pages on Disk</label>
+          <input id="dp-total" type="number" value="6" min="1" max="12">
+        </div>
+      </div>
+      <div style="margin-top:12px" class="controls">
+        <button class="btn btn-green" onclick="initDemand()">▶ Simulate</button>
+        <button class="btn btn-ghost" onclick="dpPrev()" id="dp-prev" disabled>← Prev</button>
+        <button class="btn btn-ghost" onclick="dpNext()" id="dp-next" disabled>Next →</button>
+        <button class="btn btn-blue" onclick="dpTogglePlay()" id="dp-play" disabled>⏵ Play</button>
+        <button class="btn btn-red" onclick="resetDemand()" id="dp-reset" disabled>↺ Reset</button>
+      </div>
+    </div>
+
+    <div id="dp-sim" style="display:none">
+      <div class="card">
+        <div class="card-title">Memory Map — Disk → RAM</div>
+        <div id="dp-transfer" class="transfer-anim" style="display:none">
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text3)">DISK</div><div style="font-size:24px;font-weight:700;font-family:var(--display);color:var(--amber)" id="dp-from-page">P?</div></div>
+          <div class="transfer-arrow">→</div>
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text3)">RAM</div><div style="font-size:24px;font-weight:700;font-family:var(--display);color:var(--green)" id="dp-to-frame">F?</div></div>
+        </div>
+        <div class="mem-map">
+          <div class="mem-zone"><div class="mem-zone-title"><div class="dot" style="background:var(--blue)"></div>RAM Frames</div><div id="dp-ram"></div></div>
+          <div class="mem-zone"><div class="mem-zone-title"><div class="dot" style="background:var(--text3)"></div>Disk Pages</div><div class="disk-pages" id="dp-disk"></div></div>
+        </div>
+        <div class="explanation-box" id="dp-explain">Press Simulate to begin demand paging visualization.</div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="card"><div class="card-title">Access Sequence</div><div class="seq-display" id="dp-seq-display"></div></div>
+        </div>
+        <div class="col" style="flex:0;min-width:230px">
+          <div class="card"><div class="card-title">Stats</div>
+            <div class="stats-row">
+              <div class="stat-box"><div class="stat-num stat-green" id="dp-hits">0</div><div class="stat-lbl">Hits</div></div>
+              <div class="stat-box"><div class="stat-num stat-amber" id="dp-faults">0</div><div class="stat-lbl">Faults</div></div>
+              <div class="stat-box"><div class="stat-num stat-blue" id="dp-loads">0</div><div class="stat-lbl">Loads</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">Event Log</div><div class="step-log" id="dp-log"></div></div>
+    </div>
+  </div>
+
+  <!-- ===== SEGMENTATION TAB ===== -->
+  <div class="section" id="tab-segment">
+    <div class="card">
+      <div class="card-title">Segment Table</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Define segments with base address and size limit. Max 6 segments.</div>
+      <table class="seg-table">
+        <thead><tr><th>#</th><th>Name</th><th>Base</th><th>Limit</th><th>Access</th><th></th></tr></thead>
+        <tbody id="seg-tbody"></tbody>
+      </table>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-green" onclick="addSegment()">+ Add Segment</button>
+        <button class="btn btn-ghost" onclick="resetSegments()">↺ Reset</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Address Translation</div>
+      <div class="row">
+        <div class="col"><label>Segment #</label><input id="seg-num" type="number" value="0" min="0"></div>
+        <div class="col"><label>Offset</label><input id="seg-offset" type="number" value="100" min="0"></div>
+        <div class="col" style="flex:0;min-width:130px;display:flex;align-items:flex-end">
+          <button class="btn btn-green" style="width:100%" onclick="translateAddress()">Translate →</button>
+        </div>
+      </div>
+      <div id="seg-result" style="margin-top:12px"></div>
+    </div>
+    <div class="card"><div class="card-title">Memory Layout</div><div id="seg-visual"></div></div>
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
